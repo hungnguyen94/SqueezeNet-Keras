@@ -8,14 +8,12 @@ import os
 import cv2
 import random
 
-images_dir = './training/cleaned_images'
+images_dir = './images'
 weights_file = './weights.h5'
 initial_epoch = 0
 nb_epoch = 1
 batch_size = 64
 validation_split = 0.2 
-samples_per_epoch = 2500
-nb_val_samples = 50
 
 class_mapping = {
     'coca_cola_bottles': 0,
