@@ -47,7 +47,7 @@ def SqueezeNet(nb_classes):
     fire7 = FireModule(s_1x1=48, e_1x1=192, e_3x3=192, name='fire7')(fire6)
     # fire8 output shape = (?, 27, 27, 512)
     fire8 = FireModule(s_1x1=64, e_1x1=256, e_3x3=256, name='fire8')(fire7)
-    # maxpool8 output shape = (?, 13, 13, 384)
+    # maxpool8 output shape = (?, 13, 13, 384). The paper states this output is (13, 13, 512)?
     maxpool8 = MaxPooling2D(pool_size=(3, 3), strides=(2, 2), name='maxpool8')(fire7)
     # fire9 output shape = (?, 13, 13, 512)
     fire9 = FireModule(s_1x1=64, e_1x1=256, e_3x3=256, name='fire9')(maxpool8)

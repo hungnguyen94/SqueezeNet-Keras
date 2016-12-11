@@ -11,7 +11,7 @@ import random
 images_dir = './images'
 weights_file = './weights.h5'
 initial_epoch = 0
-nb_epoch = 1
+nb_epoch = 10
 batch_size = 64
 validation_split = 0.2 
 
@@ -29,20 +29,19 @@ nb_classes = len(class_mapping)
 def load_image(img_path):
     # Load image with 3 channel colors
     img = cv2.imread(img_path, flags=1)
-    # img = img_path
-    # print img.shape
 
-    # Crop image to a square
+    # Image needs to the resized to (227x227), but we want to maintain the aspect ratio.
     height = img.shape[0]
     width = img.shape[1]
     offset = int(round(max(height, width) / 2.0))
 
-    padded_img = cv2.copyMakeBorder(img, 227, 227, 227, 227, cv2.BORDER_CONSTANT)
+    # Add borders to the images.
+    padded_img = cv2.copyMakeBorder(img, offset, offset, offset, offset, cv2.BORDER_CONSTANT)
     padded_height = padded_img.shape[0]
     padded_width = padded_img.shape[1]
     center_x = int(round(padded_width / 2.0))
     center_y = int(round(padded_height / 2.0))
-    
+    # Crop the square containing the full image.
     cropped_img = padded_img[center_y - offset: center_y + offset, center_x - offset: center_x + offset]
 
     # Resize image to 227, 227 as Squeezenet only accepts this format.
@@ -53,7 +52,7 @@ def load_image(img_path):
 # List comprehension returns list of tuples (image_path, classification)
 imgpaths_classes = [ (os.path.join(subdir, f), os.path.basename(subdir)) 
                         for subdir, dirs, files in os.walk(images_dir) 
-                            for f in files ]
+                            for f in files if f.endswith('.jpg')]
 # Randomize it. 
 random.shuffle(imgpaths_classes)
 # Split into training and validation set. 
@@ -61,8 +60,8 @@ split_index = int(validation_split * len(imgpaths_classes))
 validation_images = imgpaths_classes[:split_index]
 training_images  = imgpaths_classes[split_index:]
 
-samples_per_epoch = len(training_images) - 10
-nb_val_samples = len(validation_images) - 10
+samples_per_epoch = len(training_images) - 20
+nb_val_samples = len(validation_images) - 20
 
 
 # Generator expression. Yields two tuples (image, class). Use generator because images might not fit into memory,
