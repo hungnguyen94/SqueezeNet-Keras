@@ -1,6 +1,7 @@
 import h5py
 from keras.models import Model
 from keras.layers import Input, Convolution2D, MaxPooling2D, Dropout, GlobalAveragePooling2D, merge, Activation, ZeroPadding2D
+from keras.layers.normalization import BatchNormalization
 
 def FireModule(s_1x1, e_1x1, e_3x3, name):
     """
@@ -12,11 +13,16 @@ def FireModule(s_1x1, e_1x1, e_3x3, name):
     """
     def layer(x):
         squeeze = Convolution2D(s_1x1, 1, 1, activation='relu', init='he_normal', name=name+'_squeeze')(x)
+        squeeze = BatchNormalization(name=name+'_squeeze_bn')(squeeze)
         # Set border_mode to same to pad output of expand_3x3 with zeros.
         # Needed to merge layers expand_1x1 and expand_3x3.
         expand_1x1 = Convolution2D(e_1x1, 1, 1, activation='relu', init='he_normal', name=name+'_expand_1x1')(squeeze)
+        # expand_1x1 = BatchNormalization(name=name+'_expand_1x1_bn')(expand_1x1)
+
         expand_3x3_padded = ZeroPadding2D(padding=(1, 1), name=name+'_expand_3x3_padded')(squeeze)
         expand_3x3 = Convolution2D(e_3x3, 3, 3, activation='relu', init='he_normal', name=name+'_expand_3x3')(expand_3x3_padded)
+        # expand_3x3 = BatchNormalization(name=name+'_expand_3x3_bn')(expand_3x3)
+
         expand_merge = merge([expand_1x1, expand_3x3], mode='concat', concat_axis=3, name=name+'_expand_merge')
         return expand_merge
     return layer
@@ -28,6 +34,7 @@ def SqueezeNet(nb_classes):
     # This results in conv1 output shape = (None, 111, 111, 96), same as in the paper. 
     input_image = Input(shape=(227, 227, 3))
     conv1 = Convolution2D(96, 7, 7, activation='relu', subsample=(2, 2), init='he_normal', name='conv1')(input_image)
+    conv1 = BatchNormalization(name='conv1_bn')(conv1)
     # maxpool1 output shape = (?, 55, 55, 96)
     maxpool1 = MaxPooling2D(pool_size=(3, 3), strides=(2, 2), name='maxpool1')(conv1)
 
@@ -56,6 +63,7 @@ def SqueezeNet(nb_classes):
 
     # conv10 output shape = (?, 13, 13, 6)
     conv10 = Convolution2D(nb_classes, 1, 1, activation='relu', init='he_normal', name='conv10')(fire9_dropout)
+    conv10 = BatchNormalization(name='conv10_bn')(conv10)
     # avgpool10, softmax output shape = (?, nb_classes)
     avgpool10 = GlobalAveragePooling2D(name='avgpool10')(conv10)
     # avgpool10 = AveragePooling2D(pool_size=(13, 13), strides=(1, 1), name='avgpool10')(conv10)
