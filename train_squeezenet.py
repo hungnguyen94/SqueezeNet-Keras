@@ -13,10 +13,10 @@ import random
 images_dir = './images'
 weights_file = './weights.h5'
 initial_epoch = 0
-nb_epoch = 1
-batch_size = 64
-samples_per_epoch=1300
-nb_val_samples=100
+nb_epoch = 7
+batch_size = 32
+samples_per_epoch=2300
+nb_val_samples=32
 
 class_mapping = {
     'coca_cola_bottles': 0,
@@ -33,9 +33,11 @@ nb_classes = len(classes)
 
 train_datagen = ImageDataGenerator(
         rescale=1./255, 
-        fill_mode='nearest')
+        fill_mode='constant')
 
-test_datagen = ImageDataGenerator(rescale=1/255)
+test_datagen = ImageDataGenerator(
+        rescale=1./255, 
+        fill_mode='constant')
 
 train_generator = train_datagen.flow_from_directory('./images', 
         target_size=(227, 227),
@@ -51,10 +53,8 @@ val_generator = test_datagen.flow_from_directory('./images',
         classes=classes
         )
 
-
-
 print('Loading model..')
-model = SqueezeNet(nb_classes)
+model = SqueezeNet(nb_classes, input_shape=(227, 227, 3))
 # adam = Adam(lr=0.005)
 model.compile(loss="categorical_crossentropy", optimizer='adam', metrics=['accuracy', 'categorical_crossentropy'])
 if os.path.isfile(weights_file):
@@ -74,6 +74,6 @@ print("Finished fitting model")
 print('Saving weights')
 model.save_weights(weights_file, overwrite=True)
 print('Evaluating model')
-score = model.evaluate_generator(val_generator, val_samples=nb_val_samples)
-print('result: %s' % score)
+#score = model.evaluate_generator(val_generator, val_samples=nb_val_samples)
+#print('result: %s' % score)
 
