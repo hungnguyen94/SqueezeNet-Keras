@@ -3,6 +3,8 @@
 from __future__ import division
 from squeezenet import SqueezeNet
 from keras.utils.np_utils import to_categorical
+from keras.optimizers import Adam
+from keras.preprocessing.image import ImageDataGenerator
 import numpy as np
 import os
 import cv2
@@ -11,89 +13,58 @@ import random
 images_dir = './images'
 weights_file = './weights.h5'
 initial_epoch = 0
-nb_epoch = 10
+nb_epoch = 1
 batch_size = 64
-validation_split = 0.2 
+samples_per_epoch=1300
+nb_val_samples=100
 
 class_mapping = {
     'coca_cola_bottles': 0,
-    'fanta_bottle': 1,
-    'cola_cans': 2, 
-    'fanta_cans': 3,
-    'paper_coffee_cups': 4,
-    'water_bottles': 5
+    'fanta_bottle': 0,
+    'cola_cans': 1, 
+    'fanta_cans': 1,
+    'paper_coffee_cups': 2,
+    'water_bottles': 0
 }
-nb_classes = len(class_mapping)
+
+classes = [ 'coca_cola_bottles', 'fanta_bottle', 'cola_cans', 'fanta_cans', 'paper_coffee_cups', 'water_bottles']
+
+nb_classes = len(classes)
+
+train_datagen = ImageDataGenerator(
+        rescale=1./255, 
+        fill_mode='nearest')
+
+test_datagen = ImageDataGenerator(rescale=1/255)
+
+train_generator = train_datagen.flow_from_directory('./images', 
+        target_size=(227, 227),
+        batch_size=batch_size,
+        class_mode='categorical', 
+        classes=classes
+        )
+
+val_generator = test_datagen.flow_from_directory('./images', 
+        target_size=(227, 227),
+        batch_size=batch_size,
+        class_mode='categorical', 
+        classes=classes
+        )
 
 
-def load_image(img_path):
-    # Load image with 3 channel colors
-    img = cv2.imread(img_path, flags=1)
-
-    # Image needs to the resized to (227x227), but we want to maintain the aspect ratio.
-    height = img.shape[0]
-    width = img.shape[1]
-    offset = int(round(max(height, width) / 2.0))
-
-    # Add borders to the images.
-    padded_img = cv2.copyMakeBorder(img, offset, offset, offset, offset, cv2.BORDER_CONSTANT)
-    padded_height = padded_img.shape[0]
-    padded_width = padded_img.shape[1]
-    center_x = int(round(padded_width / 2.0))
-    center_y = int(round(padded_height / 2.0))
-    # Crop the square containing the full image.
-    cropped_img = padded_img[center_y - offset: center_y + offset, center_x - offset: center_x + offset]
-
-    # Resize image to 227, 227 as Squeezenet only accepts this format.
-    resized_image = cv2.resize(cropped_img, (227, 227)).astype(np.float32)
-    resized_image = np.expand_dims(resized_image, axis=0)
-    return resized_image
-
-# List comprehension returns list of tuples (image_path, classification)
-imgpaths_classes = [ (os.path.join(subdir, f), os.path.basename(subdir)) 
-                        for subdir, dirs, files in os.walk(images_dir) 
-                            for f in files if f.endswith('.jpg')]
-# Randomize it. 
-random.shuffle(imgpaths_classes)
-# Split into training and validation set. 
-split_index = int(validation_split * len(imgpaths_classes))
-validation_images = imgpaths_classes[:split_index]
-training_images  = imgpaths_classes[split_index:]
-
-samples_per_epoch = len(training_images) - 20
-nb_val_samples = len(validation_images) - 20
-
-
-# Generator expression. Yields two tuples (image, class). Use generator because images might not fit into memory,
-training_data = ( (load_image(img_path), to_categorical([class_mapping[classification]], nb_classes=nb_classes)) 
-                    for img_path, classification in training_images )
-
-validation_data = ( (load_image(img_path), to_categorical([class_mapping[classification]], nb_classes=nb_classes)) 
-                        for img_path, classification in validation_images )
-
-# Unzip to two lists.
-# images, classes = zip(*images_classes)
-# [images, classes], [x, y] = mnist.load_data()
-# images = images[0:500]
-# classes = classes[0:500]
-
-# images = np.array([cv2.resize(cv2.cvtColor(im, cv2.COLOR_GRAY2RGB), (227, 227)) for im in images])
-# images = np.array(images)
-# print images.shape
-# classes = to_categorical(classes, nb_classes=nr_classes)
 
 print('Loading model..')
 model = SqueezeNet(nb_classes)
+# adam = Adam(lr=0.005)
 model.compile(loss="categorical_crossentropy", optimizer='adam', metrics=['accuracy', 'categorical_crossentropy'])
 if os.path.isfile(weights_file):
     print('Loading weights: %s' % weights_file)
     model.load_weights(weights_file, by_name=True)
 
 print('Fitting model')
-# model.fit(images, classes, batch_size=batch_size, nb_epoch=nb_epoch, verbose=1, validation_split=0.2, initial_epoch=0)
-model.fit_generator(training_data, 
+model.fit_generator(train_generator, 
         samples_per_epoch=samples_per_epoch, 
-        validation_data=validation_data, 
+        validation_data=val_generator, 
         nb_val_samples=nb_val_samples, 
         nb_epoch=nb_epoch, 
         verbose=1, 
@@ -103,10 +74,6 @@ print("Finished fitting model")
 print('Saving weights')
 model.save_weights(weights_file, overwrite=True)
 print('Evaluating model')
-# score = model.evaluate(images, classes, verbose=1)
-
-validation_data = ( (load_image(img_path), to_categorical([class_mapping[classification]], nb_classes=nb_classes)) 
-                        for img_path, classification in validation_images )
-score = model.evaluate_generator(validation_data, val_samples=nb_val_samples)
+score = model.evaluate_generator(val_generator, val_samples=nb_val_samples)
 print('result: %s' % score)
 
