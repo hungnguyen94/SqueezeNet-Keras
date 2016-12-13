@@ -13,15 +13,15 @@ def FireModule(s_1x1, e_1x1, e_3x3, name):
         Returns a callable function
     """
     def layer(x):
-        squeeze = Convolution2D(s_1x1, 1, 1, activation='relu', init='he_normal', name=name+'_squeeze')(x)
+        squeeze = Convolution2D(s_1x1, 1, 1, activation='relu', init='glorot_uniform', name=name+'_squeeze')(x)
         squeeze = BatchNormalization(name=name+'_squeeze_bn')(squeeze)
 
         # Needed to merge layers expand_1x1 and expand_3x3.
-        expand_1x1 = Convolution2D(e_1x1, 1, 1, activation='relu', init='he_normal', name=name+'_expand_1x1')(squeeze)
+        expand_1x1 = Convolution2D(e_1x1, 1, 1, activation='relu', init='glorot_uniform', name=name+'_expand_1x1')(squeeze)
 
         # Pad the border with zeros. Not needed as border_mode='same' will do the same.
         # expand_3x3 = ZeroPadding2D(padding=(1, 1), name=name+'_expand_3x3_padded')(squeeze)
-        expand_3x3 = Convolution2D(e_3x3, 3, 3, border_mode='same', activation='relu', init='he_normal', name=name+'_expand_3x3')(squeeze)
+        expand_3x3 = Convolution2D(e_3x3, 3, 3, border_mode='same', activation='relu', init='glorot_uniform', name=name+'_expand_3x3')(squeeze)
 
         expand_merge = merge([expand_1x1, expand_3x3], mode='concat', concat_axis=3, name=name+'_expand_merge')
         return expand_merge
@@ -30,8 +30,7 @@ def FireModule(s_1x1, e_1x1, e_3x3, name):
 
 
 def SqueezeNet(nb_classes, input_shape=(227, 227, 3)): 
-    # Use input shape (227, 227, 3) instead of the (224, 224, 3) shape cited in the paper. 
-    # This results in conv1 output shape = (None, 111, 111, 96), same as in the paper. 
+    # Use input shape (227, 227, 3) instead of the (224, 224, 3) shape in the paper. 
     input_image = Input(shape=input_shape)
     # conv1 output shape = (113, 113, 64)
     conv1 = Convolution2D(64, 3, 3, activation='relu', subsample=(2, 2), init='glorot_uniform', name='conv1')(input_image)
